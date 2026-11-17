@@ -1,32 +1,58 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import type { StudyMaterial } from '../types';
 
-export async function generateStudyMaterial(lectureText: string): Promise<StudyMaterial> {
+export async function generateStudyMaterial(inputContent: string): Promise<StudyMaterial> {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
     if (!apiKey) {
-        throw new Error('مفتاح الـ API غير موجود! تأكد من ملف .env.local');
+        throw new Error('مفتاح الـ API غير موجود! تأكد من إعدادات البيئة');
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const trimmedText = lectureText.slice(0, 20000);
+    const cleanInput = inputContent.trim();
 
-    const prompt = `
-    حلل نص المحاضرة التالي واستخرج بصيغة JSON:
+    // التحقق مما إذا كان الإدخال رابطاً مباشراً (يوتيوب أو صفحة ويب)
+    const isUrl = /^https?:\/\/[^\s]+$/i.test(cleanInput);
+    const isYouTube = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/i.test(cleanInput);
+
+    const baseInstructions = `
+    حلل محتوى المحاضرة التالي واستخرج بصيغة JSON:
     1. عنوان مناسب ومختصر للمحاضرة (title).
     2. ملخص من 10 نقاط مركزة (summary).
     3. بطاقات استذكار من 12 بطاقة سؤال وجواب (flashcards).
     4. اختبار من 15 سؤال اختيار من متعدد مع رقم الإجابة الصحيحة 0-3 وتوضيح مختصر (quiz).
-    اجعل لغة المخرجات مطابقة للغة النص المدخل.
+    اجعل لغة المخرجات مطابقة للغة المحتوى المدخل.
+    `;
 
-    النص:
-    ${trimmedText}
-  `;
+    // تجهيز المحتوى والأدوات حسب نوع الإدخال (رابط يوتيوب، رابط موقع، أو نص/ملف)
+    let contentsPayload: any;
+    let extraConfig: any = {};
+
+    if (isYouTube) {
+        contentsPayload = [
+            {
+                fileData: {
+                    fileUri: cleanInput,
+                },
+            },
+            {
+                text: baseInstructions,
+            },
+        ];
+    } else if (isUrl) {
+        contentsPayload = `${baseInstructions}\n\nاقرأ محتوى المحاضرة مباشرة من هذا الرابط وحلله:\n${cleanInput}`;
+        extraConfig = {
+            tools: [{ urlContext: {} }],
+        };
+    } else {
+        const trimmedText = cleanInput.slice(0, 20000);
+        contentsPayload = `${baseInstructions}\n\nالنص:\n${trimmedText}`;
+    }
 
     const modelsToTry = [
-        'gemini-3.5-flash-lite',
+        'gemini-2.5-flash',
         'gemini-3-flash-preview',
-        'gemini-2.5-flash'
+        'gemini-3.5-flash-lite'
     ];
 
     let lastError: any = null;
@@ -35,8 +61,9 @@ export async function generateStudyMaterial(lectureText: string): Promise<StudyM
         try {
             const response = await ai.models.generateContent({
                 model: modelName,
-                contents: prompt,
+                contents: contentsPayload,
                 config: {
+                    ...extraConfig,
                     responseMimeType: 'application/json',
                     responseSchema: {
                         type: Type.OBJECT,
@@ -88,5 +115,5 @@ export async function generateStudyMaterial(lectureText: string): Promise<StudyM
         }
     }
 
-    throw new Error(`جميع الخوادم مزدحمة حالياً: ${lastError?.message || ''}`);
+    throw new Error(`تعذر معالجة المحتوى حالياً: ${lastError?.message || ''}`);
 }
