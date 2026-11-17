@@ -1,12 +1,6 @@
 import { HeaderTools } from './components/HeaderTools';
-
 import { PomodoroTimer } from './components/PomodoroTimer';
-
 import { FileUploader } from './components/FileUploader';
-
-
-
-
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -14,21 +8,21 @@ import {
   Brain,
   CheckCircle2,
   Sparkles,
-
   RotateCw,
   Trash2,
   FileText,
   HelpCircle,
   Loader2,
   Award,
+  Link as LinkIcon,
 } from 'lucide-react';
 import type { StudyMaterial } from './types';
 import { generateStudyMaterial } from './services/geminiService';
 import './App.css';
 
 export function App() {
-
   const [lectureText, setLectureText] = useState<string>('');
+  const [lectureUrl, setLectureUrl] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
@@ -48,18 +42,24 @@ export function App() {
     localStorage.setItem('studypulse_materials', JSON.stringify(materials));
   }, [materials]);
 
-
   const handleGenerate = async (directText?: string) => {
-    const textToAnalyze = typeof directText === 'string' ? directText : lectureText;
-    if (!textToAnalyze.trim()) {
-      setError('يرجى لصق نص المحاضرة أو رفع ملف أولاً.');
+    // الأولوية للملف المرفوع، ثم الرابط، ثم النص المكتوب
+    const contentToAnalyze =
+      typeof directText === 'string'
+        ? directText
+        : lectureUrl.trim()
+        ? lectureUrl.trim()
+        : lectureText;
+
+    if (!contentToAnalyze.trim()) {
+      setError('يرجى لصق نص المحاضرة، وضع رابط، أو رفع ملف أولاً.');
       return;
     }
 
     setLoading(true);
     setError('');
     try {
-      const result = await generateStudyMaterial(textToAnalyze);
+      const result = await generateStudyMaterial(contentToAnalyze);
 
       setMaterials((prev) => [result, ...prev]);
       setActiveMaterial(result);
@@ -67,8 +67,9 @@ export function App() {
       setFlippedCards({});
       setQuizAnswers({});
       setLectureText('');
+      setLectureUrl('');
     } catch (err: any) {
-      setError(err.message || 'حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. تأكد من صحة مفتاح الـ API.');
+      setError(err.message || 'حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. تأكد من صحة الرابط أو مفتاح الـ API.');
     } finally {
       setLoading(false);
     }
@@ -94,9 +95,6 @@ export function App() {
 
   return (
     <div className="app-container" dir="rtl">
-
-
-
       <header className="navbar">
         <div className="brand">
           <Brain className="brand-icon" size={30} />
@@ -110,13 +108,7 @@ export function App() {
           <PomodoroTimer />
           <HeaderTools />
         </div>
-
-
       </header>
-
-
-
-
 
       <main className="main-grid">
         <aside className="sidebar">
@@ -124,15 +116,50 @@ export function App() {
             <h2>
               <Sparkles size={20} /> محاضرة جديدة
             </h2>
+            
             <FileUploader onFileLoaded={(text) => handleGenerate(text)} />
 
+            <div style={{ position: 'relative', marginBottom: '12px', marginTop: '4px' }}>
+              <LinkIcon
+                size={18}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#64748b',
+                  pointerEvents: 'none',
+                }}
+              />
+              <input
+                type="url"
+                dir="ltr"
+                placeholder="أو الصق رابط المحاضرة (YouTube / مقال)..."
+                value={lectureUrl}
+                onChange={(e) => setLectureUrl(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 38px 10px 12px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-color, #cbd5e1)',
+                  backgroundColor: 'var(--bg-secondary, transparent)',
+                  color: 'inherit',
+                  fontSize: '0.9rem',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
             <textarea
-              rows={7}
-              placeholder="الصق هنا نص المحاضرة، ملخص الدرس، أو أي فقرة علمية بالعربية أو الإنجليزية..."
+              rows={6}
+              placeholder="أو الصق هنا نص المحاضرة، ملخص الدرس، أو أي فقرة علمية بالعربية أو الإنجليزية..."
               value={lectureText}
               onChange={(e) => setLectureText(e.target.value)}
             />
+
             {error && <div className="error-msg">{error}</div>}
+
             <button className="btn-primary full-width" onClick={() => handleGenerate()} disabled={loading}>
               {loading ? (
                 <>
@@ -163,7 +190,7 @@ export function App() {
                     }}
                   >
                     <div>
-                      <strong>{item.title}</strong>
+                      <strong dir="auto">{item.title}</strong>
                       <small>{item.createdAt}</small>
                     </div>
                     <button
@@ -186,14 +213,14 @@ export function App() {
               <BookOpen size={60} className="welcome-icon" />
               <h2>استعد لامتحاناتك بذكاء وسرعة</h2>
               <p>
-                الصق محتوى أي محاضرة في القائمة الجانبية ليقوم الذكاء الاصطناعي فوراً بتلخيصها،
+                ارفع ملف محاضرة، ضع رابطاً، أو الصق النص في القائمة الجانبية ليقوم الذكاء الاصطناعي فوراً بتلخيصها،
                 وإنشاء بطاقات استذكار تفاعلية، واختبار قصير لقياس فهمك.
               </p>
             </div>
           ) : (
             <div className="study-workspace">
               <div className="workspace-header">
-                <h2>{activeMaterial.title}</h2>
+                <h2 dir="auto">{activeMaterial.title}</h2>
                 <div className="tabs">
                   <button
                     className={activeTab === 'summary' ? 'tab active' : 'tab'}
@@ -223,7 +250,7 @@ export function App() {
                     {activeMaterial.summary.map((point, index) => (
                       <li key={index}>
                         <CheckCircle2 className="check-icon" size={20} />
-                        <span>{point}</span>
+                        <span dir="auto">{point}</span>
                       </li>
                     ))}
                   </ul>
@@ -243,71 +270,67 @@ export function App() {
                         }
                       >
                         <div className="card-badge">{isFlipped ? 'الإجابة' : `سؤال #${idx + 1}`}</div>
-                        <p>{isFlipped ? card.answer : card.question}</p>
+                        <p dir="auto">{isFlipped ? card.answer : card.question}</p>
                         <small>انقر لقلب البطاقة</small>
                       </div>
                     );
-                  })}
-                </div>
-              )}
-
-              {activeTab === 'quiz' && (
-                <div className="quiz-section">
-                  {Object.keys(quizAnswers).length === activeMaterial.quiz.length && (
-                    <div className="score-banner">
-                      <Award size={28} />
-                      <span>
-                        نتيجتك النهائية: <strong>{calculateQuizScore()}</strong> من{' '}
-                        <strong>{activeMaterial.quiz.length}</strong>
-                      </span>
-                    </div>
+})}
                   )}
+{activeTab === 'quiz' && (
 
-                  {activeMaterial.quiz.map((q, qIdx) => {
-                    const selected = quizAnswers[qIdx];
-                    const isAnswered = selected !== undefined;
-                    return (
-                      <div key={qIdx} className="quiz-card">
-                        <h4>
-                          {qIdx + 1}. {q.question}
-                        </h4>
-                        <div className="options-grid">
-                          {q.options.map((opt, optIdx) => {
-                            let btnClass = 'option-btn';
-                            if (isAnswered) {
-                              if (optIdx === q.correctAnswerIndex) btnClass += ' correct';
-                              else if (optIdx === selected) btnClass += ' wrong';
-                            }
-                            return (
-                              <button
-                                key={optIdx}
-                                className={btnClass}
-                                disabled={isAnswered}
-                                onClick={() =>
-                                  setQuizAnswers((prev) => ({ ...prev, [qIdx]: optIdx }))
-                                }
-                              >
-                                {opt}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {isAnswered && (
-                          <div className="explanation-box">
-                            <strong>التوضيح:</strong> {q.explanation}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-      </main>
-    </div>
-  );
+{Object.keys(quizAnswers).length === activeMaterial.quiz.length && (
+
+
+
+نتيجتك النهائية: {calculateQuizScore()} من{' '}
+{activeMaterial.quiz.length}
+
+
+)}
+{activeMaterial.quiz.map((q, qIdx) => {
+const selected = quizAnswers[qIdx];
+const isAnswered = selected !== undefined;
+return (
+
+
+{qIdx + 1}. {q.question}
+
+
+{q.options.map((opt, optIdx) => {
+let btnClass = 'option-btn';
+if (isAnswered) {
+if (optIdx === q.correctAnswerIndex) btnClass += ' correct';
+else if (optIdx === selected) btnClass += ' wrong';
 }
+return (
+<button
+key={optIdx}
+className={btnClass}
+disabled={isAnswered}
+dir="auto"
+onClick={() =>
+setQuizAnswers((prev) => ({ ...prev, [qIdx]: optIdx }))
+}
+>
+{opt}
 
+);
+})}
+
+{isAnswered && (
+
+التوضيح: {q.explanation}
+
+)}
+
+);
+})}
+
+)}
+
+)}
+
+
+);
+}
 export default App;
