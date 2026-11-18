@@ -1,3 +1,5 @@
+﻿import { getFirestore } from 'firebase/firestore';
+
 import { initializeApp } from 'firebase/app';
 import { getAI, GoogleAIBackend } from 'firebase/ai';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -13,23 +15,40 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+
 export const firebaseAI = getAI(app, { backend: new GoogleAIBackend() });
 
 const ai = new GoogleGenAI({
     apiKey: import.meta.env.VITE_GEMINI_API_KEY,
-
-    httpOptions: { apiVersion: 'v1beta' },
 });
 
-export async function generateStudyMaterial(inputContent: string): Promise<StudyMaterial> {
+export async function generateStudyMaterial(
+    inputContent: string,
+    lang: 'ar' | 'en' = 'en'
+): Promise<StudyMaterial> {
     const cleanInput = inputContent.trim().slice(0, 20000);
-    const prompt = `حلل محتوى المحاضرة التالي واستخرج بصيغة JSON: 1. عنوان مناسب (title). 2. ملخص من 10 نقاط مركزة (summary). 3. 12 بطاقة سؤال وجواب (flashcards). 4. اختبار من 15 سؤال اختيار من متعدد مع رقم الإجابة الصحيحة 0-3 وتوضيح مختصر (quiz). اجعل لغة المخرجات مطابقة للغة المحتوى المدخل.\n\nالمحتوى:\n${cleanInput}`;
+    const isYoutube = cleanInput.startsWith('http') && (cleanInput.includes('youtube.com') || cleanInput.includes('youtu.be'));
+    const targetLang = lang === 'ar' ? 'العربية' : 'English';
+
+    const baseInstructions =
+        'استخرج النتيجة بصيغة JSON فقط:\n' +
+        '1. عنوان مناسب وواضح يعكس عنوان المحاضرة الحقيقي (title).\n' +
+        '2. ملخص من 10 نقاط مركزة وشاملة من محتوى المحاضرة الفعلي (summary).\n' +
+        '3. 12 بطاقة سؤال وجواب للمراجعة السريعة من داخل المحاضرة (flashcards).\n' +
+        '4. اختبار من 15 سؤال اختيار من متعدد مع رقم الإجابة الصحيحة 0-3 وتوضيح مختصر (quiz).\n\n' +
+        'مهم جداً: اكتب جميع المخرجات باللغة ' + targetLang + '.';
+
+    const contentsPayload = isYoutube
+        ? [
+            { fileData: { fileUri: cleanInput } },
+            { text: 'شاهد وحلل هذه المحاضرة التعليمية بالكامل بدقة عالية.\n' + baseInstructions },
+        ]
+        : 'حلل محتوى المحاضرة التالي بدقة:\n' + cleanInput + '\n\n' + baseInstructions;
 
     const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash-lite',
-
-
-        contents: prompt,
+        contents: contentsPayload,
         config: {
             responseMimeType: 'application/json',
             responseSchema: {
@@ -71,8 +90,8 @@ export async function generateStudyMaterial(inputContent: string): Promise<Study
 
     return {
         id: Date.now().toString(),
-        title: data.title || 'محاضرة جديدة',
-        createdAt: new Date().toLocaleDateString('ar-EG'),
+        title: data.title || (lang === 'ar' ? 'محاضرة جديدة' : 'New Lecture'),
+        createdAt: new Date().toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US'),
         summary: data.summary || [],
         flashcards: data.flashcards || [],
         quiz: data.quiz || [],
