@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@google/genai": "^3.0.0",
+    "firebase": "^13.4.0",
     "lucide-react": "^1.71.0",
     "pdfjs-dist": "^6.5.438",
     "react": "^19.3.1",
