@@ -1,6 +1,6 @@
 export const translations = {
     en: {
-        brandSub: 'Your AI-Powered Smart Study Companion',
+        brandSub: 'Your Smart Study & Revision Companion',
         navHome: 'Home',
         navWorkspace: 'AI Workspace',
         navAbout: 'About Us',
@@ -53,7 +53,7 @@ export const translations = {
         errInvalidUrl: 'Please enter a valid URL starting with http:// or https://',
     },
     ar: {
-        brandSub: 'رفيقك الدراسي الذكي بالذكاء الاصطناعي',
+        brandSub: 'رفيقك الدراسي الذكي للتلخيص والمراجعة',
         navHome: 'الرئيسية',
         navWorkspace: 'الأداة الذكية',
         navAbout: 'من نحن',

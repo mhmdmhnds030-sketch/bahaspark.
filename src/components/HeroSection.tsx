@@ -56,7 +56,7 @@ export function HeroSection({ t, onStart, onAbout }: any) {
 
   return e('section', { id: 'home', className: 'hero-section hero-split' },
     e('div', { className: 'hero-content' },
-      e('div', { className: 'hero-badge' }, e(Sparkles, { size: 16 }), e('span', null, t.heroBadge)),
+
       e('h2', { className: 'hero-title typewriter-heading' },
         displayedText,
         e('span', { className: 'typewriter-cursor' }, '|')
@@ -77,8 +77,8 @@ export function HeroSection({ t, onStart, onAbout }: any) {
         e('div', { className: 'showcase-top' },
           e('div', { className: 'ai-pulse-circle' }, e(Brain, { size: 34 })),
           e('div', null,
-            e('strong', null, 'BahaaSpark AI Engine'),
-            e('small', null, 'Gemini 3.5 Flash Lite • Active')
+            e('strong', null, 'BahaaSpark AI Engine')
+
           )
         ),
         e('div', { className: 'showcase-steps' },
